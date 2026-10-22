@@ -1,0 +1,7 @@
+{
+  "name": "usage-meter",
+  "version": "0.1.0",
+  "author": { "name": "Ricky Cadden" },
+  "description": "Shows 5-hour and 7-day usage limits (percent used, time left) in a band above the prompt.",
+  "types": "./types/index.d.ts"
+}
