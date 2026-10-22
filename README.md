@@ -19,8 +19,6 @@ Or at the prompt of a terminal session:
 
 In the desktop app: click + next to the prompt box, then Plugins, Add marketplace with `rcadden/usage-meter`, then Add plugin.
 
-The repository is private, so the machine needs GitHub credentials (`gh auth login`, then `gh auth setup-git`).
-
 ## Update
 
 ```bash
