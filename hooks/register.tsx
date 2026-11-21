@@ -64,11 +64,80 @@ async function refresh($: EngineInterface) {
   await update($, now, () => Date.now())
 }
 
+const PANE = 'usage-meter'
+
 export const register: Register = on => {
   on('session.start', async ($, e, next) => {
     await refresh($)
     $.clock.every(60000, () => refresh($))
+    await $.command.register({ name: 'meter', description: 'Show 5H / 7D usage limits in a pane' })
+    if ((await $.session.surfaces()).includes('mobile')) {
+      void $.ui.open({ id: PANE, title: 'Usage' })
+    }
     return next(e)
+  })
+
+  on('session.attach', { surface: 'mobile' }, async ($, e, next) => {
+    void $.ui.open({ id: PANE, title: 'Usage' })
+    return next(e)
+  })
+
+  on('command.run', { command: 'meter' }, async $ => {
+    await $.ui.open({ id: PANE, title: 'Usage' })
+    return { text: 'Usage pane opened.' }
+  })
+
+  on('ui.render', { component: 'Pane', requestId: PANE }, async ($, e) => {
+    const rows = (await read($, limits)).filter(l => LABELS[l.kind])
+    const at = await read($, now)
+    const els = $.ui.resolve(e)
+    const { Box, Text } = els
+    const Svg = (els as any).Svg as any
+
+    if (rows.length === 0) {
+      return (
+        <Box>
+          <Text size="body">Waiting for usage data…</Text>
+        </Box>
+      )
+    }
+
+    return (
+      <Box flexDirection="column" gap={1}>
+        {rows.map(l => {
+          const hot = l.percentUsed >= 85
+          return (
+            <Box key={l.kind} flexDirection="row" alignItems="center" gap={2}>
+              {Svg ? (
+                <Svg
+                  source={ringSvg(l.percentUsed)}
+                  alt={`${LABELS[l.kind]} usage ${Math.round(l.percentUsed)}%`}
+                  width={36}
+                  height={36}
+                />
+              ) : (
+                <Text size="title">{ring(l.percentUsed)}</Text>
+              )}
+              <Box flexDirection="column">
+                <Box flexDirection="row" alignItems="center" gap={1}>
+                  <Text size="footnote" weight="regular">
+                    {LABELS[l.kind]}
+                  </Text>
+                  <Text size="title" weight="bold" color={hot ? 'red' : undefined}>
+                    {Math.round(l.percentUsed)}%
+                  </Text>
+                </Box>
+                {l.resetsAt ? (
+                  <Text size="footnote" weight="regular">
+                    {timeLeft(l.resetsAt, at)}
+                  </Text>
+                ) : null}
+              </Box>
+            </Box>
+          )
+        })}
+      </Box>
+    )
   })
 
   on('session.measure', async ($, e, next) => {
