@@ -11,16 +11,28 @@ const LABELS: Record<string, string> = { five_hour: '5H', seven_day: '7D' }
 const ring = (pct: number) =>
   pct >= 87.5 ? '●' : pct >= 62.5 ? '◕' : pct >= 37.5 ? '◑' : pct >= 12.5 ? '◔' : '○'
 
-const GREEN = [34, 163, 90]
-const YELLOW = [245, 197, 24]
-const RED = [220, 38, 38]
+// Hue stops [percent, hue]: solid green to 50%, yellow by 62% and held to ~76%, red by 95%.
+// Hue is interpolated, so the blend stays bright instead of passing through mustard.
+const STOPS: [number, number][] = [
+  [0, 140],
+  [50, 140],
+  [62, 50],
+  [76, 42],
+  [95, 0],
+]
 
-// Green at 0%, fully yellow at 60%, fully red at 80% and above.
 function ringColor(pct: number) {
-  const [from, to, t] =
-    pct <= 60 ? [GREEN, YELLOW, pct / 60] : [YELLOW, RED, Math.min(1, (pct - 60) / 20)]
-  const mix = (i: number) => Math.round(from[i]! + (to[i]! - from[i]!) * t)
-  return `rgb(${mix(0)},${mix(1)},${mix(2)})`
+  const p = Math.min(100, Math.max(0, pct))
+  let hue = 0
+  for (let i = 1; i < STOPS.length; i++) {
+    const [p0, h0] = STOPS[i - 1]!
+    const [p1, h1] = STOPS[i]!
+    if (p <= p1) {
+      hue = h0 + ((h1 - h0) * (p - p0)) / (p1 - p0)
+      break
+    }
+  }
+  return `hsl(${Math.round(hue)},85%,46%)`
 }
 
 function ringSvg(pct: number) {
@@ -85,7 +97,7 @@ export const register: Register = on => {
     return (
       <Box flexDirection="row" alignItems="center" gap={3}>
         {rows.map(l => {
-          const hot = l.percentUsed >= 80
+          const hot = l.percentUsed >= 85
           return (
             <Box key={l.kind} flexDirection="row" alignItems="center" gap={1}>
               {Svg ? (
