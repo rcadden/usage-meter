@@ -11,11 +11,23 @@ const LABELS: Record<string, string> = { five_hour: '5H', seven_day: '7D' }
 const ring = (pct: number) =>
   pct >= 87.5 ? '●' : pct >= 62.5 ? '◕' : pct >= 37.5 ? '◑' : pct >= 12.5 ? '◔' : '○'
 
-function ringSvg(pct: number, hot: boolean) {
+const GREEN = [34, 163, 90]
+const YELLOW = [245, 197, 24]
+const RED = [220, 38, 38]
+
+// Green at 0%, fully yellow at 60%, fully red at 80% and above.
+function ringColor(pct: number) {
+  const [from, to, t] =
+    pct <= 60 ? [GREEN, YELLOW, pct / 60] : [YELLOW, RED, Math.min(1, (pct - 60) / 20)]
+  const mix = (i: number) => Math.round(from[i]! + (to[i]! - from[i]!) * t)
+  return `rgb(${mix(0)},${mix(1)},${mix(2)})`
+}
+
+function ringSvg(pct: number) {
   const r = 11
   const c = 2 * Math.PI * r
   const arc = (Math.min(100, Math.max(0, pct)) / 100) * c
-  const color = hot ? '#d92d20' : '#c2410c'
+  const color = ringColor(pct)
   return (
     `<svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">` +
     `<circle cx="14" cy="14" r="${r}" fill="none" stroke="#808080" stroke-opacity="0.45" stroke-width="4"/>` +
@@ -73,12 +85,12 @@ export const register: Register = on => {
     return (
       <Box flexDirection="row" alignItems="center" gap={3}>
         {rows.map(l => {
-          const hot = l.percentUsed >= 90
+          const hot = l.percentUsed >= 80
           return (
             <Box key={l.kind} flexDirection="row" alignItems="center" gap={1}>
               {Svg ? (
                 <Svg
-                  source={ringSvg(l.percentUsed, hot)}
+                  source={ringSvg(l.percentUsed)}
                   alt={`${LABELS[l.kind]} usage ${Math.round(l.percentUsed)}%`}
                   width={18}
                   height={18}
@@ -86,11 +98,14 @@ export const register: Register = on => {
               ) : (
                 <Text size="body">{ring(l.percentUsed)}</Text>
               )}
-              <Text size="body" weight="semibold" color={hot ? 'red' : undefined}>
-                {LABELS[l.kind]} {Math.round(l.percentUsed)}%
+              <Text size="footnote" weight="regular">
+                {LABELS[l.kind]}
+              </Text>
+              <Text size="heading" weight="bold" color={hot ? 'red' : undefined}>
+                {Math.round(l.percentUsed)}%
               </Text>
               {l.resetsAt ? (
-                <Text size="body" weight="medium" color={hot ? 'red' : undefined}>
+                <Text size="footnote" weight="regular">
                   {timeLeft(l.resetsAt, at)}
                 </Text>
               ) : null}
